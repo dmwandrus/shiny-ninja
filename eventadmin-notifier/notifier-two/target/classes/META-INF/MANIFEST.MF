@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1393446889204
+Build-Jdk: 1.7.0_15
+Built-By: dandrus
+Bundle-ManifestVersion: 2
+Bundle-Name: eventadmin :: notifier example :: notifier-b
+Bundle-SymbolicName: diane.samples.eventadmin.notifier-b
+Bundle-Version: 1.0.0
+Created-By: Apache Maven Bundle Plugin
+Import-Package: com.sample.notifier,org.osgi.service.blueprint;version="
+ [1.0.0,2.0.0)",org.osgi.service.event
+Import-Service: org.osgi.service.event.EventAdmin;multiple:=false
+Tool: Bnd-1.50.0

@@ -1,0 +1,19 @@
+This is a simple example of how camel aggregator works. 
+
+1) I have a message sender which sends out messages with a randomly chosen
+   correlation id, every x milliseconds. (camel timer & a processor)
+2) I have an aggregator, which matches on those correlation ids. It stores  
+   unmatched messages in a hawtdb data store
+
+What I've learned: 
+
+The aggregator method is called for every message, 
+regardless of whether or not there has been a match, SO, one of the events/
+messages WILL be null, regularly. 
+
+The unmatched messages are not held in memory, they're just stuck into 
+hawtdb until they are matched.
+
+If there are a lot of unmatched messages and the hawtdb file store grows to
+hundreds of megabytes, then, that's the size the file is going to be from 
+then on. It doesn't automatically shrink itself. 

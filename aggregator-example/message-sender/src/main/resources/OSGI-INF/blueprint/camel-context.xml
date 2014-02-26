@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint 
+    xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+    xmlns:camel="http://camel.apache.org/schema/blueprint">
+    
+    
+<!--
+use this if you use activemq:queue:queuename
+if you use jms:queue:queuename, you need to specify the Connection Factory,
+not just the camel Component.
+--> 
+<!--    <bean id="activemq" 
+      class="org.apache.activemq.camel.component.ActiveMQComponent">
+        <property name="brokerURL" value="tcp://localhost:61616"/>
+    </bean>-->
+    
+<bean id="jmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+        <property name="brokerURL" value="vm://default"/>
+    </bean>
+
+    <bean id="pooledConnectionFactory" class="org.apache.activemq.pool.PooledConnectionFactory">
+        <property name="maxConnections" value="8"/>
+        <property name="maximumActive" value="500"/>
+        <property name="connectionFactory" ref="jmsConnectionFactory"/>
+    </bean>
+
+
+    <bean id="jmsConfig" class="org.apache.camel.component.jms.JmsConfiguration">
+        <property name="connectionFactory" ref="pooledConnectionFactory"/>
+        <property name="transacted" value="false"/>
+        <property name="concurrentConsumers" value="10"/>
+    </bean>
+
+    <bean id="jms" class="org.apache.activemq.camel.component.ActiveMQComponent">
+        <property name="configuration" ref="jmsConfig"/>
+    </bean>
+    
+    <bean id="message-creator" class="com.sample.aggregator.example.RandomMessageSender" init-method="init">
+    </bean>
+    
+    <!-- period is in milliseconds... 100 milliseconds = 10x/second-->
+    <!-- mysterious issue, switched to jms and all of a sudden it can't find message-creator...-->
+    <camel:camelContext id="create-events"
+                        trace="true">
+        <camel:route id="send-event">
+            <camel:from uri="timer://foo?fixedRate=true&amp;period=50"/>
+            <camel:to uri="bean:message-creator"/>
+            <camel:to uri="jms:queue:mymessages"/>
+            <!--<camel:to uri="activemq:queue:mymessages"/>-->
+        </camel:route>
+        
+        
+    </camel:camelContext>
+    
+</blueprint>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint 
+    xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+    xmlns:camel="http://camel.apache.org/schema/blueprint">
+
+    <!-- 
+        trying to get this component to just go completely overboard....
+        tried - using activemq as the endpoint, as it is optimized, so, back to 
+        jms, to see if that's it.
+        tried w/o connection pool, now trying with. 
+        basically flooding this aggregator with tons of messages, and it needs
+        to match 3 messages before it can complete each exchange. 
+        hawtdb is holding at 72M, now at 80M, however, the production issue wasn't
+        necessarily an oversized data file...
+        overall computer memory usage is at about 5G
+        
+    -->
+    
+    <!-- ACTIVE MQ Configuration - localhost & configuring a threadpool -->
+    <bean id="jmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+        <property name="brokerURL" value="vm://default"/>
+    </bean>
+
+    <bean id="pooledConnectionFactory" class="org.apache.activemq.pool.PooledConnectionFactory">
+        <property name="maxConnections" value="8"/>
+        <property name="maximumActive" value="500"/>
+        <property name="connectionFactory" ref="jmsConnectionFactory"/>
+    </bean>
+
+
+    <bean id="jmsConfig" class="org.apache.camel.component.jms.JmsConfiguration">
+        <property name="connectionFactory" ref="pooledConnectionFactory"/>
+        <property name="transacted" value="false"/>
+        <property name="concurrentConsumers" value="10"/>
+    </bean>
+
+    <bean id="jms" class="org.apache.activemq.camel.component.ActiveMQComponent">
+        <property name="configuration" ref="jmsConfig"/>
+    </bean>
+    
+    
+    <!-- configure my aggregrator -->
+    <bean id="aggregator" class="com.sample.aggregator.example.SimpleAggregationStrategy"/>
+    
+    <!-- configure my storage for in-flght / unmatched messages -->
+    <bean id="repo" class="org.apache.camel.component.hawtdb.HawtDBAggregationRepository">
+        <property name="repositoryName" value="diane-agg-repo"/>
+        <property name="persistentFileName" value="data/aggregator-repository/audit2.dat"/>
+    </bean>
+
+    <!-- get all events on the mymessages queue, match them by correlation id, 
+    found in the header & after you get 5 matches, send to the log -->    
+    <camel:camelContext id="process-events"
+                        trace="true">
+        <camel:route id="throttle-events" >
+            <camel:from uri="jms:queue:mymessages"/>
+            <!-- throttle 3 messages per 1 sec -->
+            <camel:throttle timePeriodMillis="1000">
+                <camel:constant>3</camel:constant>
+                <!--                <camel:to uri="direct:throttled-messages"/>
+                </camel:throttle>
+                </camel:route>
+                <camel:route id="aggregate-events">
+                <camel:from uri="direct:throttled-messages"/>-->
+                <camel:aggregate strategyRef="aggregator" aggregationRepositoryRef="repo" completionSize="5">
+                    <camel:correlationExpression>
+                        <camel:simple>header.CORRELATION_ID</camel:simple>
+                    </camel:correlationExpression>
+                    <camel:to uri="jms:queue:processed"/>
+                </camel:aggregate>
+            </camel:throttle>
+        </camel:route>
+        
+    </camel:camelContext>
+    
+</blueprint>

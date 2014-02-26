@@ -1,0 +1,15 @@
+This is my research into how camel uses event notifier, an osgi eventing 
+concept.
+
+It isn't the cleanest...oh well.  There are two different notifier bundles - a
+& b, each of which call a bean every 15 seconds with a camel timer. 
+
+Each camel context that you want to monitor, you add in a event notifier bean,
+and it listens on that local context for camel events and then sends a custom
+message to a custom event admin topic. 
+
+Then there is ONE processor for that custom event admin topic, and it gets 
+messages from all the camel contexts that are sending to that topic. 
+By the way, don't put a notifier in the same camel context in which you 
+configure this processor, because, uh, well, you'll get a stack overflow.
+ 

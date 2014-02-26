@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:camel="http://camel.apache.org/schema/blueprint"
+           xmlns:camel-cxf="http://camel.apache.org/schema/blueprint/cxf"
+           xsi:schemaLocation="http://www.osgi.org/xmlns/blueprint/v1.0.0 http://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd">
+
+    <reference id="eventAdminService" interface="org.osgi.service.event.EventAdmin"/>
+
+    <bean id="notifier" class="com.sample.notifier.EventNotifier"
+          init-method="init">
+        <property name="eventAdmin" ref="eventAdminService"/>
+        <property name="name" value="TWO"/>
+    </bean>
+    
+    
+    <bean id="dianeBean" class="com.sample.notifier.a.DianeBean"/>
+    
+    <camel-cxf:cxfEndpoint
+            id="nonexistent-service"
+            address="/hello/world"
+            wsdlURL="helloService.wsdl"
+            loggingFeatureEnabled="true"
+            endpointName="es:HelloWorld"
+            serviceName="es:HelloWorldService"
+            xmlns:es="http://helloworld.webservice.moodykettle.com">
+    </camel-cxf:cxfEndpoint>
+    
+    
+    <camel:camelContext id="create-events"
+                  trace="false">
+        <camel:route id="send-event">
+            <camel:from uri="timer://foo?fixedRate=true&amp;period=15s"/>
+            <camel:to uri="bean:dianeBean?method=sayGoodbye"/>
+            <camel:to uri="cxf:bean:nonexistent-service"/>
+        </camel:route>
+    </camel:camelContext>
+    
+</blueprint>
